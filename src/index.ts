@@ -2,18 +2,39 @@
  * Gmail Auto-Responder Entry Point
  *
  * This is the main entry point for the application.
- * Currently serves as a placeholder for the orchestrator.
+ * It starts the HTTP server to receive Pub/Sub push notifications.
  */
 
+import { getConfig } from "./config/index.js";
 import { logger } from "./logger/index.js";
+import {
+  createApp,
+  startServer,
+  defaultNotificationHandler,
+} from "./server.js";
 
-export function main(): void {
+export async function main(): Promise<void> {
   logger.info("Gmail Auto-Responder starting...");
-  logger.info("Application initialized successfully");
+
+  try {
+    const config = getConfig();
+    const app = createApp(defaultNotificationHandler);
+    await startServer(app, config.port);
+
+    logger.info("Application initialized successfully", {
+      port: config.port,
+      endpoints: ["/health", "/webhook/pubsub"],
+    });
+  } catch (error) {
+    logger.error("Failed to start application", {
+      error: error instanceof Error ? error.message : String(error),
+    });
+    process.exit(1);
+  }
 }
 
 // Run if executed directly
 const scriptPath = process.argv[1];
 if (scriptPath && import.meta.url === `file://${scriptPath}`) {
-  main();
+  void main();
 }
